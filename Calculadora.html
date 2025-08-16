@@ -1,0 +1,407 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8" />
+<title>Calculadora de Matrices — Gauss & Jordan</title>
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<style>
+  :root{
+    --glass: rgba(0,0,0,0.6);
+    --accent: #2ecc71;
+    --accent-strong: #27ae60;
+  }
+
+  /* Collage de fondo: velo oscuro + Gauss izquierda + Jordan derecha */
+  body{
+    margin:0;
+    font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+    color: #d9c2c2;
+    min-height: 100dvh;
+    display:flex;
+    align-items:flex-start;
+    justify-content:center;
+    padding: 24px;
+    background:
+      linear-gradient( to bottom, rgba(88, 16, 195, 0.55), rgba(0,0,0,.75) ),
+      url("gauss.jpg") left center / auto 100% no-repeat fixed,
+      url("jordan.jpg") right center / auto 100% no-repeat fixed,
+      linear-gradient(135deg, #1f2a44, #0e2433);
+    background-attachment: fixed, fixed, fixed, fixed;
+  }
+
+  h1{
+    margin: 0 0 8px 0;
+    text-shadow: 0 2px 8px rgba(0,0,0,.6);
+    letter-spacing: .3px;
+  }
+  .subtitle{
+    opacity:.9;
+    font-size: .95rem;
+    margin-bottom: 18px;
+  }
+
+  .container{
+    width: min(980px, 96vw);
+    background: var(--glass);
+    backdrop-filter: blur(6px);
+    border: 1px solid rgba(255,255,255,.12);
+    box-shadow: 0 10px 30px rgba(0,0,0,.35);
+    border-radius: 18px;
+    padding: 20px;
+  }
+
+  .grid{
+    display:grid;
+    gap:16px;
+  }
+  @media (min-width: 860px){
+    .grid-2{
+      grid-template-columns: 1fr 1fr;
+      align-items:start;
+    }
+  }
+
+  label{ font-weight: 600; }
+
+  .row{
+    display:flex; flex-wrap:wrap; gap:10px; align-items:center;
+  }
+
+  select, button, input[type="number"]{
+    border: 1px solid rgba(255,255,255,.14);
+    background: rgba(255,255,255,.08);
+    color: #191818;
+    border-radius: 10px;
+    padding: 10px 12px;
+    font-size: 0.95rem;
+    outline: none;
+  }
+  select:hover, button:hover, input[type="number"]:hover{
+    border-color: rgba(255,255,255,.28);
+  }
+
+  button{
+    font-weight: 700;
+    cursor:pointer;
+    background: var(--accent-strong);
+    border: none;
+    box-shadow: 0 4px 12px rgba(46, 204, 113, .35);
+    transition: transform .05s ease;
+  }
+  button:active{ transform: translateY(1px); }
+  #siguientePaso{ display:none; background:#f39c12; box-shadow:0 4px 12px rgba(243,156,18,.35); }
+
+  table{
+    border-collapse: separate;
+    border-spacing: 6px;
+    margin-inline:auto;
+  }
+  td{
+    text-align:center;
+    min-width:54px;
+    padding: 0;
+  }
+  input[type="number"]{
+    width: 100%;
+    text-align:center;
+    padding: 10px;
+    background: rgba(255,255,255,.1);
+  }
+
+  .panel{
+    background: rgba(255,255,255,.06);
+    border: 1px dashed rgba(80, 13, 136, 0.18);
+    border-radius: 12px;
+    padding: 14px;
+  }
+
+  #resultado{
+    margin-top:16px;
+    padding: 16px;
+    background: rgba(255,255,255,.06);
+    border: 1px solid rgba(255,255,255,.12);
+    border-radius: 14px;
+    overflow:auto;
+    transition: all .4s ease;
+  }
+
+  .matview table{
+    border-spacing: 10px;
+  }
+  .cell{
+    display:inline-block; padding:8px 10px; border-radius:10px;
+    background: rgba(255,255,255,.08);
+    min-width:64px; text-align:center; font-variant-numeric: tabular-nums;
+    box-shadow: inset 0 0 0 1px rgba(255,255,255,.12);
+  }
+
+  .pivote{
+    background: #ffeb3b; color:#1b1b1b; font-weight:800;
+    box-shadow: inset 0 0 0 2px rgba(0,0,0,.15), 0 8px 20px rgba(255,235,59,.35);
+    transform: scale(1.02);
+  }
+
+  .hint{
+    font-size: .9rem; opacity:.9; margin-top:8px;
+  }
+
+  .ops{
+    display:flex; flex-wrap:wrap; gap:10px; align-items:center;
+  }
+</style>
+</head>
+<body>
+
+  <div class="container">
+    <h1>Calculadora de Matrices</h1>
+    <div class="subtitle">Suma · Resta · Multiplicación · Eliminación de <b>Gauss</b> · <b>Gauss-Jordan</b></div>
+
+    <div class="grid grid-2">
+      <div class="panel">
+        <div class="row" style="gap:12px; margin-bottom:10px;">
+          <div>
+            <label for="size">Tamaño</label><br />
+            <select id="size">
+              <option value="2">2×2</option>
+              <option value="3">3×3</option>
+            </select>
+          </div>
+
+          <div>
+            <label for="operacion">Operación</label><br />
+            <select id="operacion">
+              <option value="suma">Suma</option>
+              <option value="resta">Resta</option>
+              <option value="multiplicacion">Multiplicación</option>
+              <option value="gauss">Gauss (triangular superior)</option>
+              <option value="gaussjordan">Gauss-Jordan (RREF)</option>
+            </select>
+          </div>
+
+          <div class="ops" style="margin-left:auto;">
+            <button id="btnCalcular">Calcular</button>
+            <button id="siguientePaso">Siguiente paso</button>
+          </div>
+        </div>
+
+        <div class="grid grid-2">
+          <div>
+            <h3>Matriz A</h3>
+            <div id="matrizA"></div>
+          </div>
+          <div>
+            <h3>Matriz B</h3>
+            <div id="matrizB"></div>
+            <div class="hint">Para Gauss/Gauss-Jordan, B es el vector columna del término independiente.</div>
+          </div>
+        </div>
+      </div>
+
+      <div id="resultado" class="panel">
+        <div class="hint">El resultado y los pasos se mostrarán aquí.</div>
+      </div>
+    </div>
+  </div>
+
+<script>
+  let pasosAnimados = [];
+  let pasoActual = 0;
+
+  function crearInputs(id, n){
+    let html = '<table>';
+    for(let i=0;i<n;i++){
+      html += '<tr>';
+      for(let j=0;j<n;j++){
+        html += `<td><input type="number" id="${id}${i}${j}" value="0" step="any"></td>`;
+      }
+      html += '</tr>';
+    }
+    html += '</table>';
+    document.getElementById(id).innerHTML = html;
+  }
+
+  function leerMatriz(id, n){
+    const m = Array.from({length:n}, ()=>Array(n).fill(0));
+    for(let i=0;i<n;i++){
+      for(let j=0;j<n;j++){
+        const el = document.getElementById(id + i + j);
+        m[i][j] = Number(el.value || 0);
+      }
+    }
+    return m;
+  }
+
+  function leerVectorB(n){
+    // Usa la PRIMERA columna de la “matriz B” como vector b.
+    const b = Array(n).fill(0);
+    for(let i=0;i<n;i++){
+      b[i] = Number(document.getElementById('matrizB'+i+'0').value || 0);
+    }
+    return b;
+  }
+
+  function fmt(x){
+    const y = Math.abs(x) < 1e-12 ? 0 : x;
+    return Number.isFinite(y) ? y.toFixed(4).replace(/\.?0+$/,'') : 'NaN';
+  }
+
+  function viewMatrix(m, pivote=null){
+    let html = '<div class="matview"><table>';
+    for(let i=0;i<m.length;i++){
+      html += '<tr>';
+      for(let j=0;j<m[i].length;j++){
+        const cls = (pivote && pivote[0]===i && pivote[1]===j) ? 'cell pivote' : 'cell';
+        html += `<td><span class="${cls}">${fmt(m[i][j])}</span></td>`;
+      }
+      html += '</tr>';
+    }
+    html += '</table></div>';
+    return html;
+  }
+
+  function addStep(title, html){
+    pasosAnimados.push(`<div><div style="margin-bottom:8px;font-weight:700">${title}</div>${html}</div>`);
+  }
+
+  function suma(A,B){ return A.map((r,i)=>r.map((v,j)=>v+B[i][j])); }
+  function resta(A,B){ return A.map((r,i)=>r.map((v,j)=>v-B[i][j])); }
+  function mult(A,B){
+    const n=A.length, m=B[0].length;
+    const C = Array.from({length:n}, ()=>Array(m).fill(0));
+    for(let i=0;i<n;i++)
+      for(let k=0;k<A[0].length;k++)
+        for(let j=0;j<m;j++)
+          C[i][j] += A[i][k]*B[k][j];
+    return C;
+  }
+
+  // Gauss (eliminación hacia triangular superior) sobre matriz AUGMENTADA
+  function gauss(aug){
+    const M = aug.map(r=>r.slice());
+    const n = M.length, cols = M[0].length;
+    addStep('Matriz aumentada inicial', viewMatrix(M));
+    for(let i=0;i<n;i++){
+      // Pivot parcial
+      let maxRow = i;
+      for(let r=i+1;r<n;r++){
+        if(Math.abs(M[r][i]) > Math.abs(M[maxRow][i])) maxRow = r;
+      }
+      if(Math.abs(M[maxRow][i]) < 1e-12) continue; // columna casi nula
+      if(maxRow !== i){ [M[i],M[maxRow]] = [M[maxRow],M[i]]; addStep(`Intercambio F${i+1} ↔ F${maxRow+1}`, viewMatrix(M, [i,i])); }
+      const piv = M[i][i];
+      addStep(`Pivote en F${i+1},C${i+1} = ${fmt(piv)}`, viewMatrix(M, [i,i]));
+      // Eliminar debajo
+      for(let r=i+1;r<n;r++){
+        const factor = M[r][i]/piv;
+        if (Math.abs(factor) < 1e-12) continue;
+        for(let c=i;c<cols;c++) M[r][c] -= factor*M[i][c];
+        addStep(`F${r+1} ← F${r+1} − (${fmt(factor)})·F${i+1}`, viewMatrix(M, [i,i]));
+      }
+    }
+    return M;
+  }
+
+  // Gauss-Jordan hasta RREF sobre matriz AUGMENTADA
+  function gaussJordan(aug){
+    const M = aug.map(r=>r.slice());
+    const n = M.length, cols = M[0].length;
+    addStep('Matriz aumentada inicial', viewMatrix(M));
+    let row = 0;
+    for(let col=0; col<n && row<n; col++){
+      // Buscar pivote
+      let sel = row;
+      for(let r=row+1; r<n; r++) if(Math.abs(M[r][col]) > Math.abs(M[sel][col])) sel = r;
+      if(Math.abs(M[sel][col]) < 1e-12) continue;
+      if(sel!==row){ [M[row],M[sel]] = [M[sel],M[row]]; addStep(`Intercambio F${row+1} ↔ F${sel+1}`, viewMatrix(M, [row,col])); }
+      // Normalizar pivote a 1
+      const piv = M[row][col];
+      for(let c=col;c<cols;c++) M[row][c] /= piv;
+      addStep(`F${row+1} ← F${row+1} / ${fmt(piv)}`, viewMatrix(M, [row,col]));
+      // Anular resto de la columna
+      for(let r=0;r<n;r++){
+        if(r===row) continue;
+        const factor = M[r][col];
+        if(Math.abs(factor) < 1e-12) continue;
+        for(let c=col;c<cols;c++) M[r][c] -= factor*M[row][c];
+        addStep(`F${r+1} ← F${r+1} − (${fmt(factor)})·F${row+1}`, viewMatrix(M, [row,col]));
+      }
+      row++;
+    }
+    return M;
+  }
+
+  function mostrarPaso(){
+    const res = document.getElementById('resultado');
+    if(pasoActual < pasosAnimados.length){
+      res.innerHTML = pasosAnimados[pasoActual++];
+    }else{
+      document.getElementById('siguientePaso').style.display = 'none';
+    }
+  }
+
+  function calcular(){
+    const n = parseInt(document.getElementById('size').value,10);
+    const A = leerMatriz('matrizA', n);
+    const B = leerMatriz('matrizB', n); // Para básicas, B es matriz; para Gauss usa 1ª col
+    const op = document.getElementById('operacion').value;
+
+    pasosAnimados = [];
+    pasoActual = 0;
+
+    const out = document.getElementById('resultado');
+    const btnNext = document.getElementById('siguientePaso');
+
+    if(op === 'suma'){
+      out.innerHTML = `<b>Resultado A + B</b>${viewMatrix(suma(A,B))}`;
+      btnNext.style.display = 'none';
+      return;
+    }
+    if(op === 'resta'){
+      out.innerHTML = `<b>Resultado A − B</b>${viewMatrix(resta(A,B))}`;
+      btnNext.style.display = 'none';
+      return;
+    }
+    if(op === 'multiplicacion'){
+      // Solo permitido si dimensiones compatibles (n×n · n×n)
+      out.innerHTML = `<b>Resultado A · B</b>${viewMatrix(mult(A,B))}`;
+      btnNext.style.display = 'none';
+      return;
+    }
+    if(op === 'gauss' || op === 'gaussjordan'){
+      const b = leerVectorB(n);
+      const aug = A.map((row,i)=> row.concat([b[i]]));
+      if(op === 'gauss'){
+        const U = gauss(aug);
+        addStep('Forma triangular superior (Gauss)', viewMatrix(U));
+      }else{
+        const R = gaussJordan(aug);
+        addStep('Forma reducida por filas (RREF)', viewMatrix(R));
+        // Intento de solución (si es sistema compatible determinado)
+        const sol = R.map(r=>r[n]);
+        if(R.every((r,i)=> Math.abs(r[i]-1)<1e-9)){
+          pasosAnimados.push(`<div><b>Solución:</b> ${sol.map((v,i)=>`x${i+1}=${fmt(v)}`).join(', ')}</div>`);
+        }
+      }
+      btnNext.style.display = 'inline-block';
+      mostrarPaso();
+      return;
+    }
+  }
+
+  // Inicialización
+  const sizeSel = document.getElementById('size');
+  function init(){
+    const n = parseInt(sizeSel.value,10);
+    crearInputs('matrizA', n);
+    crearInputs('matrizB', n);
+  }
+  sizeSel.addEventListener('change', init);
+  init();
+
+  document.getElementById('btnCalcular').addEventListener('click', calcular);
+  document.getElementById('siguientePaso').addEventListener('click', mostrarPaso);
+</script>
+</body>
+</html>
+
+

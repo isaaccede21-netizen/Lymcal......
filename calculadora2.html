@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<title>Calculadora Avanzada de Matrices</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+  body {
+    margin:0;
+    font-family: Arial, sans-serif;
+    color: #fff;
+    text-align: center;
+    padding: 20px;
+    background:
+      linear-gradient(rgba(0,0,0,0.5), rgba(0,0,0,0.7)),
+      url('gauss.jpg') left center / auto 100% no-repeat fixed,
+      url('jordan.jpg') right center / auto 100% no-repeat fixed,
+      linear-gradient(135deg, #1f4037, #99f2c8);
+    background-attachment: fixed, fixed, fixed, fixed;
+  }
+  h1 { font-size: 2.5rem; margin-bottom: 15px; text-shadow: 0 2px 8px #000; }
+  select, input { padding:6px; margin:2px; border-radius:5px; border:none; outline:none; }
+  button {
+    padding: 8px 15px; margin:5px; font-weight:bold; border-radius:5px;
+    border:none; cursor:pointer; background:#ff9800; transition:0.3s;
+  }
+  button:hover { background:#e68900; }
+  .matriz { margin: 15px auto; display:inline-block; }
+  #resultado { margin-top:20px; padding:15px; background:rgba(0,0,0,0.4); border-radius:10px; display:inline-block; min-width:200px; }
+  table { margin:auto; border-collapse: separate; border-spacing: 4px; }
+  td { padding:3px; min-width:40px; }
+  .pivote { background: yellow; color: black; font-weight:bold; transition:0.3s; }
+</style>
+</head>
+<body>
+
+<h1>Calculadora Visual de Matrices</h1>
+
+<div>
+  <label for="tamano">Tamaño:</label>
+  <select id="tamano" onchange="generarMatriz()">
+    <option value="2">2x2</option>
+    <option value="3" selected>3x3</option>
+  </select>
+</div>
+
+<div id="matrizA" class="matriz"></div>
+
+<div>
+  <button onclick="gauss()">Gauss</button>
+  <button onclick="gaussJordan()">Gauss-Jordan</button>
+  <button onclick="determinante()">Determinante</button>
+  <button onclick="transpuesta()">Transpuesta</button>
+</div>
+
+<div id="resultado"></div>
+
+<script>
+let n = 3;
+let pasosAnimados = [];
+let pasoActual = 0;
+
+function generarMatriz() {
+  n = parseInt(document.getElementById('tamano').value);
+  let cont = document.getElementById('matrizA');
+  cont.innerHTML = '';
+  let html = '<table>';
+  for(let i=0;i<n;i++){
+    html += '<tr>';
+    for(let j=0;j<n;j++){
+      html += `<td><input type="number" id="a_${i}_${j}" value="0"></td>`;
+    }
+    html += '</tr>';
+  }
+  html += '</table>';
+  cont.innerHTML = html;
+}
+generarMatriz();
+
+function leerMatriz() {
+  let A = [];
+  for(let i=0;i<n;i++){
+    A[i] = [];
+    for(let j=0;j<n;j++){
+      A[i][j] = parseFloat(document.getElementById(`a_${i}_${j}`).value) || 0;
+    }
+  }
+  return A;
+}
+
+function mostrarMatriz(M, pivote=null){
+  let html='<table>';
+  M.forEach((fila,i)=>{
+    html+='<tr>';
+    fila.forEach((v,j)=>{
+      const cls = (pivote && pivote[0]===i && pivote[1]===j) ? 'pivote' : '';
+      html+=`<td class="${cls}">${v.toFixed(2)}</td>`;
+    });
+    html+='</tr>';
+  });
+  html+='</table>';
+  return html;
+}
+
+function animarPasos(pasos){
+  pasoActual=0;
+  function mostrar(){
+    if(pasoActual<pasos.length){
+      document.getElementById('resultado').innerHTML = pasos[pasoActual++];
+      setTimeout(mostrar, 700);
+    }
+  }
+  mostrar();
+}
+
+// GAUSS
+function gauss(){
+  let M = leerMatriz().map(r=>r.slice());
+  pasosAnimados = [];
+  for(let i=0;i<n;i++){
+    let max=i;
+    for(let k=i+1;k<n;k++) if(Math.abs(M[k][i])>Math.abs(M[max][i])) max=k;
+    [M[i],M[max]] = [M[max],M[i]];
+    pasosAnimados.push(mostrarMatriz(M,[i,i]));
+    for(let k=i+1;k<n;k++){
+      let f = M[k][i]/M[i][i];
+      for(let j=i;j<n;j++) M[k][j]-=f*M[i][j];
+      pasosAnimados.push(mostrarMatriz(M,[i,i]));
+    }
+  }
+  animarPasos(pasosAnimados);
+}
+
+// GAUSS-JORDAN
+function gaussJordan(){
+  let M = leerMatriz().map(r=>r.slice());
+  pasosAnimados = [];
+  for(let i=0;i<n;i++){
+    let piv = M[i][i];
+    for(let j=0;j<n;j++) M[i][j]/=piv;
+    pasosAnimados.push(mostrarMatriz(M,[i,i]));
+    for(let k=0;k<n;k++){
+      if(k!==i){
+        let f=M[k][i];
+        for(let j=0;j<n;j++) M[k][j]-=f*M[i][j];
+        pasosAnimados.push(mostrarMatriz(M,[i,i]));
+      }
+    }
+  }
+  animarPasos(pasosAnimados);
+}
+
+// DETERMINANTE
+function determinante(){
+  let A = leerMatriz().map(r=>r.slice());
+  let det=1;
+  for(let i=0;i<n;i++){
+    let max=i;
+    for(let k=i+1;k<n;k++) if(Math.abs(A[k][i])>Math.abs(A[max][i])) max=k;
+    [A[i],A[max]]=[A[max],A[i]];
+    det*=A[i][i];
+    for(let k=i+1;k<n;k++){
+      let f=A[k][i]/A[i][i];
+      for(let j=i;j<n;j++) A[k][j]-=f*A[i][j];
+    }
+  }
+  document.getElementById('resultado').innerHTML='<h3>Determinante:</h3>'+det.toFixed(4);
+}
+
+// TRANSPUESTA
+function transpuesta(){
+  let A = leerMatriz();
+  let T=[];
+  for(let i=0;i<n;i++){
+    T[i]=[];
+    for(let j=0;j<n;j++){
+      T[i][j]=A[j][i];
+    }
+  }
+  document.getElementById('resultado').innerHTML='<h3>Transpuesta:</h3>'+mostrarMatriz(T);
+}
+</script>
+
+</body>
+</html>

@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<title>Verificar LD / LI</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<style>
+  body {
+    font-family: Arial, sans-serif;
+    text-align: center;
+    padding: 20px;
+    background: linear-gradient(135deg, #1f4037, #99f2c8);
+    color: white;
+  }
+  h1 { font-size: 2.5rem; margin-bottom: 15px; text-shadow: 0 2px 6px #000; }
+  .matriz { margin: 15px auto; display: inline-block; }
+  input { width: 50px; text-align: center; margin:2px; border-radius:5px; border:none; outline:none; padding:5px; }
+  button { padding:8px 15px; margin:5px; font-weight:bold; border-radius:5px; border:none; cursor:pointer; background:#ff9800; transition:0.3s; }
+  button:hover { background:#e68900; }
+  table { margin:auto; border-collapse: separate; border-spacing: 4px; }
+  td { padding:3px; min-width:40px; text-align:center; }
+  #resultado { margin-top:20px; padding:15px; background: rgba(0,0,0,0.4); border-radius:10px; display:inline-block; min-width:220px; }
+  .pivote { background: yellow; color: black; font-weight:bold; }
+</style>
+</head>
+<body>
+
+<h1>Verificar si una matriz es LD o LI</h1>
+
+<div>
+  <label for="filas">Filas:</label>
+  <select id="filas" onchange="generarMatriz()"> 
+    <option value="2">2</option>
+    <option value="3" selected>3</option>
+  </select>
+  <label for="columnas">Columnas:</label>
+  <select id="columnas" onchange="generarMatriz()"> 
+    <option value="2">2</option>
+    <option value="3" selected>3</option>
+  </select>
+</div>
+
+<div id="matriz" class="matriz"></div>
+
+<div>
+  <button onclick="verificarLD()">Verificar LD / LI</button>
+</div>
+
+<div id="resultado"></div>
+
+<script>
+let filas = 3, columnas = 3;
+
+function generarMatriz() {
+  filas = parseInt(document.getElementById('filas').value);
+  columnas = parseInt(document.getElementById('columnas').value);
+  let cont = document.getElementById('matriz');
+  cont.innerHTML = '';
+  let html = '<table>';
+  for(let i=0;i<filas;i++){
+    html+='<tr>';
+    for(let j=0;j<columnas;j++){
+      html+=`<td><input type="number" id="a_${i}_${j}" value="0"></td>`;
+    }
+    html+='</tr>';
+  }
+  html+='</table>';
+  cont.innerHTML = html;
+}
+generarMatriz();
+
+function leerMatriz(){
+  let M=[];
+  for(let i=0;i<filas;i++){
+    M[i]=[];
+    for(let j=0;j<columnas;j++){
+      M[i][j]=parseFloat(document.getElementById(`a_${i}_${j}`).value) || 0;
+    }
+  }
+  return M;
+}
+
+function mostrarMatriz(M, pivote=null){
+  let html='<table>';
+  M.forEach((fila,i)=>{
+    html+='<tr>';
+    fila.forEach((v,j)=>{
+      const cls = (pivote && pivote[0]===i && pivote[1]===j)?'pivote':'';
+      html+=`<td class="${cls}">${v.toFixed(2)}</td>`;
+    });
+    html+='</tr>';
+  });
+  html+='</table>';
+  return html;
+}
+
+// Función para calcular rango y mostrar pasos
+function verificarLD(){
+  let A = leerMatriz().map(r=>r.slice());
+  let pasos = [];
+  let m = filas, n = columnas;
+  let M = A.map(r=>r.slice());
+  
+  for(let i=0;i<Math.min(m,n);i++){
+    // Elegir pivote
+    let max=i;
+    for(let k=i+1;k<m;k++) if(Math.abs(M[k][i])>Math.abs(M[max][i])) max=k;
+    [M[i], M[max]]=[M[max], M[i]];
+    if(M[i][i]===0) continue; // pivote 0
+    // Hacer ceros debajo
+    for(let k=i+1;k<m;k++){
+      let f = M[k][i]/M[i][i];
+      for(let j=i;j<n;j++) M[k][j]-=f*M[i][j];
+    }
+    pasos.push(mostrarMatriz(M,[i,i]));
+  }
+  
+  // Contar filas no nulas para rango
+  let rango = 0;
+  for(let i=0;i<m;i++){
+    if(M[i].some(v=>Math.abs(v)>1e-8)) rango++;
+  }
+  
+  let resultado = `<h3>Pasos de reducción:</h3>`;
+  resultado += pasos.join('<br><br>');
+  resultado += `<h3>Rango = ${rango}</h3>`;
+  if(rango===columnas){
+    resultado += `<p>La matriz es <strong>Linealmente Independiente (LI)</strong></p>`;
+  } else {
+    resultado += `<p>La matriz es <strong>Linealmente Dependiente (LD)</strong></p>`;
+  }
+  
+  document.getElementById('resultado').innerHTML = resultado;
+}
+</script>
+
+</body>
+</html>
+
+
+
